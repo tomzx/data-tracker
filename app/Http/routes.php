@@ -2,10 +2,61 @@
 
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Collection;
+use tomzx\DataTracker\Log;
+use tomzx\Mathematics\Structures\Sequence;
 
-Route::get('/', function() {
-	return View::make('home');
+$periods = [
+	7    => 'One week',
+	14   => 'Two weeks',
+	30   => 'One month',
+	90   => '3 months',
+	180  => '6 months',
+	365  => 'Last year',
+	9999 => 'All times'
+];
+
+$periodGroups = [
+	'w-l' => 'Day of week',
+	'd' => 'Day of month',
+	'm-M' => 'Month',
+	'Y' => 'Year',
+	'Y-m-d' => 'Year-Month-(Day)',
+];
+
+$defaultFormat = 'Y-m-d';
+$currentFormat = isset($_GET['custom']) ? $_GET['custom'] : $defaultFormat;
+$currentLimit = isset($_GET['limit']) ? (int)$_GET['limit'] : 365;
+
+Route::get('/', function() use ($periods, $periodGroups, $currentFormat, $currentLimit) {
+//	$logs = [];
+	$logs = Log::all()->groupBy('key');
+	$logs = array_map(function($item) {
+		return array_map('floatval', array_pluck($item, 'value'));
+	}, $logs->toArray());
+
+	$logs = array_map(function($data) {
+		$sequence = new Sequence($data);
+		return [
+			'count' => $sequence->count(),
+			'minimum' => $sequence->minimum(),
+			'average' => $sequence->average(),
+			'maximum' => $sequence->maximum(),
+			'median' => $sequence->median(),
+			'mode' => $sequence->mode(),
+			'range' => $sequence->range(),
+			'variance' => $sequence->variance(),
+			'standard_deviation' => $sequence->standardDeviation(),
+		];
+	}, $logs);
+
+	return View::make('home', [
+		'keys' => getKeys(),
+		'logs' => $logs,
+		'periods' => $periods,
+		'periodGroups' => $periodGroups,
+		'currentFormat' => $currentFormat,
+		'currentLimit' => $currentLimit,
+	]);
 });
 
 Route::get('logs', function() {
@@ -25,7 +76,9 @@ function getKeys() {
 // 	"c": 12
 // }
 Route::post('logs', function() {
-	$timestamp = Carbon::parse(Input::get('_timestamp', 'now'));
+	$now = time();
+	$timestamp = Carbon::createFromTimestampUTC(Input::get('_timestamp', $now));
+
 	$data = Input::except(['_timestamp']);
 
 	$insertedData = [];
@@ -60,9 +113,10 @@ Route::post('logs', function() {
 Route::post('logs/bulk', function() {
 	$data = Input::all();
 
+	$now = time();
 	$insertedData = [];
 	foreach ($data as $metricData) {
-		$timestamp = Carbon::parse(Arr::get($metricData, '_timestamp', 'now'));
+		$timestamp = Carbon::createFromTimestampUTC(Arr::get($metricData, '_timestamp', $now));
 		$metrics = Arr::except($metricData, ['_timestamp']);
 		foreach ($metrics as $key => $value) {
 			$insertedData[] = [
@@ -80,25 +134,26 @@ Route::post('logs/bulk', function() {
 
 Route::get('logs/{key}', function($key) {
 	$from = Input::get('from');
-	$from = $from ? Carbon::parse($from) : null;
 	$to = Input::get('to');
-	$to = $to ? Carbon::parse($to) : null;
 
 	$query = DB::table('log')
 		->select('log.*')
 		->where('log.key', '=', $key)
 		->groupBy('timestamp');
 
-	whereFromTo($query, $from, $to);
+	$data = whereFromTo($query, $from, $to)->get();
 
-	$data = $query->get();
-
+//	return array_map(function($datum) {
+//		return [(int)$datum->timestamp, (double)$datum->value];
+//	}, $data);
 	return array_map(function($datum) {
-		return [(int)$datum->timestamp, (double)$datum->value];
+		return (double)$datum->value;
 	}, $data);
 });
 
 function whereFromTo($query, $from, $to) {
+	$from = $from ? Carbon::parse($from) : null;
+	$to = $to ? Carbon::parse($to) : null;
 	if ($from && $to) {
 		return $query->whereBetween('log.timestamp', [$from->timestamp, $to->timestamp]);
 	} else if ($from) {
@@ -106,28 +161,68 @@ function whereFromTo($query, $from, $to) {
 	} else if ($to) {
 		return $query->where('log.timestamp', '<', $to->timestamp);
 	}
+
+	return $query;
 }
 
 Route::get('all', function() {
-	$data = DB::table('log')
+	$from = Input::get('from');
+	$to = Input::get('to');
+
+	$query = DB::table('log')
 		->select('log.*')
 		->groupBy('timestamp')
-		->groupBy('key')
-		->get();
+		->groupBy('key');
 
-	$data = (new Collection($data))->groupBy('key');
+	$data = whereFromTo($query, $from, $to)->get();
 
-	$output = [];
+	$dateFormat = Input::get('format', 'Y-m-d');
+	$lineChart = substr($dateFormat, 0, 3) === 'Y-m' || substr($dateFormat, 0, 1) === 'U';
 
-	foreach ($data as $group => $items) {
+	$categories = [];
+	$processedData = [];
+	foreach ($data as $datum) {
+		$key = $datum->key;
+		$formattedDate = date($dateFormat, $datum->timestamp);
+		$categories[$formattedDate] = null;
+		$processedData[$key][$formattedDate][] = (float)$datum->value;
+	}
+
+	$categories = array_keys($categories);
+	sort($categories);
+
+	$output = [
+		'chart' => [
+			'type' => $lineChart ? 'line' : 'column',
+		],
+		'series' => []
+	];
+
+	if ($lineChart) {
+		$output += [
+				'xAxis' => [
+					'type' => 'datetime',
+			],
+		];
+	} else {
+		$output += [
+			'xAxis' => [
+				'categories' => $categories,
+			],
+		];
+	}
+
+	foreach ($processedData as $group => $formattedDates) {
 		$entry = [
 			'name' => $group,
 			'data' => [],
 		];
-		foreach ($items as $item) {
-			$entry['data'][] = [(int)$item->timestamp*1000, (float)$item->value];
+		ksort($formattedDates);
+		foreach ($formattedDates as $formattedDate => $values) {
+			$xAxisValue = $lineChart ? (int)strtotime($formattedDate)*1000 : $formattedDate; // TODO: Support U as format
+			$entry['data'][] = [$xAxisValue, (float)(new Sequence($values))->average()];
 		}
-		$output[] = $entry;
+		$output['series'][] = $entry;
 	}
 
 	return Response::json($output);
