@@ -90,7 +90,7 @@ Route::post('logs', function() {
 		];
 	}
 
-	DB::table('log')->insert($insertedData);
+	batchInsert(DB::table('log'), $insertedData);
 
 	return ['timestamp' => $timestamp->timestamp];
 });
@@ -127,7 +127,7 @@ Route::post('logs/bulk', function() {
 		}
 	}
 
-	DB::table('log')->insert($insertedData);
+	batchInsert(DB::table('log'), $insertedData);
 
 	return ['status' => 'ok', 'inserted' => count($insertedData)];
 });
@@ -135,20 +135,35 @@ Route::post('logs/bulk', function() {
 Route::get('logs/{key}', function($key) {
 	$from = Input::get('from');
 	$to = Input::get('to');
+	$order = strtolower(Input::get('order', 'asc'));
+	$limit = Input::get('limit');
+	$keyed = Input::get('keyed', false);
+
+	if ( ! in_array( $order, ['asc', 'desc'])) {
+		$order = 'asc';
+	}
 
 	$query = DB::table('log')
 		->select('log.*')
 		->where('log.key', '=', $key)
-		->groupBy('timestamp');
+		->groupBy('timestamp')
+		->orderBy('timestamp', $order);
+
+	if ($limit) {
+		$query->limit((int)$limit);
+	}
 
 	$data = whereFromTo($query, $from, $to)->get();
 
-//	return array_map(function($datum) {
-//		return [(int)$datum->timestamp, (double)$datum->value];
-//	}, $data);
-	return array_map(function($datum) {
-		return (double)$datum->value;
-	}, $data);
+	if ($keyed) {
+		return array_map(function($datum) {
+			return [(int)$datum->timestamp, (double)$datum->value];
+		}, $data);
+	} else {
+		return array_map(function($datum) {
+			return (double)$datum->value;
+		}, $data);
+	}
 });
 
 function whereFromTo($query, $from, $to) {
@@ -227,3 +242,16 @@ Route::get('all', function() {
 
 	return Response::json($output);
 });
+
+function batchInsert(\Illuminate\Database\Query\Builder $table, array $data, $batchSize = 100)
+{
+	$table->getConnection()->transaction(function () use ($table, $data, $batchSize) {
+		// Batch in group of 250 entries to prevent "Too many SQL variables" SQL error
+		$batchCount = ceil(count($data) / $batchSize);
+		for ($i = 0; $i < $batchCount; ++$i) {
+			$insertedData = array_slice($data, $i * $batchSize, $batchSize);
+
+			$table->insert($insertedData);
+		}
+	});
+}
