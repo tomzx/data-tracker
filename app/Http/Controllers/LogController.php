@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\QueryHelper;
 use Carbon\Carbon;
+use DB;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\DB;
 use Input;
+use Response;
 use tomzx\DataTracker\LogService;
+use tomzx\Mathematics\Structures\Sequence;
 
 class LogController extends Controller {
 	/**

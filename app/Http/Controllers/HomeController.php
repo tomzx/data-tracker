@@ -21,6 +21,9 @@ class HomeController extends Controller {
 		$this->logService = $logService;
 	}
 
+	/**
+	 * @return \Illuminate\Contracts\View\View
+	 */
 	public function index()
 	{
 		$periods = [

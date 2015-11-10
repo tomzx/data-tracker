@@ -2,6 +2,9 @@
 
 namespace tomzx\DataTracker;
 
+use DB;
+use Illuminate\Support\Arr;
+
 class LogService {
 	/**
 	 * @return array
