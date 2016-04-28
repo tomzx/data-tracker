@@ -36,25 +36,22 @@ $(function() {
 			},
 		};
 
-		//if (chart !== null && chart.highcharts()) {
-		//	var highcharts = chart.highcharts();
-		//	//defaults = highcharts.options;
-		//	//for (var i = 0; i < chartOptions.series.length; i++) {
-		//	//	highcharts.series[i].setData(chartOptions.series[i].data, false, false);
-		//	//}
-		//	// TODO: Refresh chart
-		//
-		//	chartOptions = $.extend(true, defaults, highcharts.options, chartOptions);
-		//} else {
-		//	chartOptions = $.extend(true, defaults, chartOptions);
-		//	//chartOptions = $.extend(true, defaults, chartOptions);
-		//	//
-		//	//chart.highcharts(chartOptions);
-		//}
-
 		chartOptions = $.extend(true, defaults, chartOptions);
 
-		chart.highcharts(chartOptions);
+		updateChart(chart, chartOptions);
+	};
+
+	var updateChart = function(chart, data) {
+		if(chart !== null && chart.highcharts()) {
+			var highcharts = chart.highcharts();
+			for(var i = 0; i < data.series.length; i++) {
+				// TODO(tom@tomrochette.com): This still can break if new series are added while looking at the chart
+				highcharts.series[i].setData(data.series[i].data, false, false);
+			}
+			highcharts.xAxis[0].setCategories(data.series.categories, true, true);
+		} else {
+			chart.highcharts(data);
+		}
 	};
 
 	var refreshGraphs = function() {

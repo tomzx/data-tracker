@@ -162,17 +162,18 @@ class LogController extends Controller {
 		$dateFormat = Input::get('format', 'Y-m-d');
 		$lineChart = substr($dateFormat, 0, 3) === 'Y-m' || substr($dateFormat, 0, 1) === 'U';
 
-		$categories = [];
 		$processedData = [];
 		foreach ($data as $datum) {
 			$key = $datum->key;
 			$formattedDate = date($dateFormat, $datum->timestamp);
-			$categories[$formattedDate] = null;
 			$processedData[$key][$formattedDate][] = (float)$datum->value;
 		}
 
-		$categories = array_keys($categories);
-		sort($categories);
+		$categories = DB::table('log')
+			->distinct()
+			->select('key')
+			->orderBy('key')
+			->lists('key');
 
 		$output = [
 			'chart'  => [
@@ -195,18 +196,25 @@ class LogController extends Controller {
 			];
 		}
 
-		foreach ($processedData as $group => $formattedDates) {
-			$entry = [
-				'name' => $group,
+		$series = [];
+		foreach ($categories as $category) {
+			$series[$category] = [
+				'name' => $category,
 				'data' => [],
 			];
+		}
+
+		foreach ($processedData as $group => $formattedDates) {
+			$data = [];
 			ksort($formattedDates);
 			foreach ($formattedDates as $formattedDate => $values) {
 				$xAxisValue = $lineChart ? (int)strtotime($formattedDate) * 1000 : $formattedDate; // TODO: Support U as format
-				$entry['data'][] = [$xAxisValue, (float)(new Sequence($values))->average()];
+				$data[] = [$xAxisValue, (float)(new Sequence($values))->average()];
 			}
-			$output['series'][] = $entry;
+			$series[$group]['data'] = $data;
 		}
+
+		$output['series'] = array_values($series);
 
 		return Response::json($output);
 	}
