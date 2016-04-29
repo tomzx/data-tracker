@@ -41,10 +41,10 @@ class HomeController extends Controller {
 			'd'     => 'Day of month',
 			'm-M'   => 'Month',
 			'Y'     => 'Year',
-			'Y-m-d' => 'Year-Month-(Day)',
+			'Y-m-d H:i' => 'Year-Month-(Day) Hour:minute',
 		];
 
-		$defaultFormat = 'Y-m-d';
+		$defaultFormat = 'Y-m-d H:i';
 		$currentFormat = isset($_GET['custom']) ? $_GET['custom'] : $defaultFormat;
 		$currentLimit = isset($_GET['limit']) ? (int)$_GET['limit'] : 365;
 

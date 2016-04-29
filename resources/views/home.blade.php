@@ -59,7 +59,7 @@
 			<div class="pull-left">
 				<div class="btn-group">
 					@foreach ($periodGroups as $format => $label)
-					<button class="btn btn-sm {{ $format == $currentFormat ? 'btn-primary' : 'btn-default' }}" name="custom" value="{{ $format }}">{{ $label }}</button>
+					<button class="btn btn-sm {{ $format == $currentFormat ? 'btn-primary' : 'btn-default' }} btn-format" name="custom" value="{{ $format }}">{{ $label }}</button>
 					@endforeach
 				</div>
 			</div>
@@ -67,7 +67,7 @@
 			<div class="pull-right">
 				<div class="btn-group">
 					@foreach ($periods as $period => $label)
-					<button class="btn btn-sm {{ $period == $currentLimit ? 'btn-primary' : 'btn-default' }}" name="limit" value="{{ $period }}">{{ $label }}</button>
+					<button class="btn btn-sm {{ $period == $currentLimit ? 'btn-primary' : 'btn-default' }} btn-period" name="limit" value="{{ $period }}">{{ $label }}</button>
 					@endforeach
 				</div>
 			</div>

@@ -80,4 +80,20 @@ $(function() {
 	$('#from, #to, #format').change(function() {
 		refreshGraphs();
 	});
+
+	$('.btn-format').click(function() {
+		var $this = $(this);
+		$('.btn-format').removeClass('btn-primary').addClass('btn-default');
+		$this.removeClass('btn-default').addClass('btn-primary');
+		$('#format').val($this.attr('value')).trigger('change');
+	});
+
+	$('.btn-period').click(function() {
+		var $this = $(this);
+		$('.btn-period').removeClass('btn-primary').addClass('btn-default');
+		$this.removeClass('btn-default').addClass('btn-primary');
+		$('#from').val('-' + $this.attr('value') + ' days');
+		$('#to').val('now');
+		$('#from').trigger('change');
+	});
 });
