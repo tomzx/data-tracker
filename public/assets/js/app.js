@@ -17,6 +17,22 @@ $(function() {
 		}
 	});
 
+	var viewing = null;
+	var KEY_UP = 0;
+	var KEY_DOWN = 1;
+	var ctrlKey = KEY_UP;
+	window.onkeyup = function(event) {
+		if ( ! event.ctrlKey) {
+			ctrlKey = KEY_UP;
+		}
+	};
+
+	window.onkeydown = function(event) {
+		if (event.ctrlKey) {
+			ctrlKey = KEY_DOWN;
+		}
+	};
+
 	var graphHandlers = {};
 
 	graphHandlers['all'] = function(chartOptions) {
@@ -24,6 +40,34 @@ $(function() {
 		var defaults = {
 			title: {
 				text: 'Data log',
+			},
+			plotOptions: {
+				series: {
+					events: {
+						legendItemClick: function() {
+							var currentSeries = this;
+							if (ctrlKey === KEY_DOWN) {
+								// If the selected series is different than the previously viewed series, we will
+								// show only the newly selected series
+								var isDifferent = viewing !== this;
+								// Show all series if the series we were viewing is different than the one selected
+								var showAll = ! isDifferent;
+								// If we were showing all series, then it means we're not viewing any particular series
+								viewing = showAll ? null : this;
+
+								_.each(this.chart.series, function(series) {
+									series.setVisible(showAll);
+								});
+								// Always make selected visible
+								this.setVisible(true);
+								return false;
+							} else {
+								// We're not viewing any item in particular now
+								viewing = null;
+							}
+						},
+					},
+				},
 			},
 			legend: {
 				layout: 'vertical',
