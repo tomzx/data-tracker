@@ -25,7 +25,7 @@
 </head>
 <body>
 	<div class="container-fluid">
-		{!! Form::open(['class' => 'form-inline fixed']) !!}
+		<form class="form-inline fixed" method="POST">
 			<div class="form-group">
 				<label for="from" class="sr-only">From</label>
 				<input type="text" name="from" id="from" class="form-control" placeholder="from" value="-30 days"/>
@@ -50,7 +50,7 @@
 					<input type="checkbox" name="normalize" id="normalize"/> Normalize
 				</label>
 			</div>
-		{!! Form::close() !!}
+		</form>
 		<div class="row">
 			<div class="graph all" data-url="all"></div>
 		</div>

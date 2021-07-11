@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Arr;
 use tomzx\DataTracker\Log;
 use tomzx\DataTracker\LogService;
 use tomzx\Mathematics\Structures\Sequence;
@@ -51,7 +52,7 @@ class HomeController extends Controller {
 		//	$logs = [];
 		$logs = Log::all()->groupBy('key');
 		$logs = array_map(function ($item) {
-			return array_map('floatval', array_pluck($item, 'value'));
+			return array_map('floatval', Arr::pluck($item, 'value'));
 		}, $logs->toArray());
 
 		$logs = array_map(function ($data) {

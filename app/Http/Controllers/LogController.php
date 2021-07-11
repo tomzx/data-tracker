@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\QueryHelper;
 use Carbon\Carbon;
-use DB;
 use Illuminate\Support\Arr;
-use Input;
-use Response;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Request;
+use Illuminate\Support\Facades\Response;
 use tomzx\DataTracker\LogService;
 use tomzx\Mathematics\Structures\Sequence;
 
@@ -46,9 +46,9 @@ class LogController extends Controller {
 	public function store()
 	{
 		$now = time();
-		$timestamp = Carbon::createFromTimestampUTC(Input::get('_timestamp', $now));
+		$timestamp = Carbon::createFromTimestampUTC(Request::input('_timestamp', $now));
 
-		$data = Input::except(['_timestamp']);
+		$data = Request::except(['_timestamp']);
 
 		$insertedData = [];
 		foreach ($data as $key => $value) {
@@ -84,7 +84,7 @@ class LogController extends Controller {
 	 */
 	public function storeBulk()
 	{
-		$data = Input::all();
+		$data = Request::all();
 
 		$now = time();
 		$insertedData = [];
@@ -111,11 +111,11 @@ class LogController extends Controller {
 	 */
 	public function show($key)
 	{
-		$from = Input::get('from');
-		$to = Input::get('to');
-		$order = strtolower(Input::get('order', 'asc'));
-		$limit = Input::get('limit');
-		$keyed = Input::get('keyed', false);
+		$from = Request::input('from');
+		$to = Request::input('to');
+		$order = strtolower(Request::input('order', 'asc'));
+		$limit = Request::input('limit');
+		$keyed = Request::input('keyed', false);
 
 		if ( ! in_array($order, ['asc', 'desc'])) {
 			$order = 'asc';
@@ -149,8 +149,8 @@ class LogController extends Controller {
 	 */
 	public function all()
 	{
-		$from = Input::get('from');
-		$to = Input::get('to');
+		$from = Request::input('from');
+		$to = Request::input('to');
 
 		$query = DB::table('log')
 			->select('log.*')
@@ -159,7 +159,7 @@ class LogController extends Controller {
 
 		$data = QueryHelper::whereFromTo($query, $from, $to)->get();
 
-		$dateFormat = Input::get('format', 'Y-m-d');
+		$dateFormat = Request::input('format', 'Y-m-d');
 		$lineChart = substr($dateFormat, 0, 3) === 'Y-m' || substr($dateFormat, 0, 1) === 'U';
 
 		$processedData = [];
@@ -171,9 +171,8 @@ class LogController extends Controller {
 
 		$categories = DB::table('log')
 			->distinct()
-			->select('key')
 			->orderBy('key')
-			->lists('key');
+			->pluck('key');
 
 		$output = [
 			'chart'  => [
